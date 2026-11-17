@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>球具產生器</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22%231d5fc4%22/%3E%3Cpath d=%22M5 12q11 6 22 0M5 20q11-6 22 0%22 stroke=%22%23fff%22 stroke-width=%222%22 fill=%22none%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a studio viewport on the left, a narrow spec-sheet control column on the right. */
+:root{
+  --bg:#eef0f4; --panel:#ffffff; --ink:#161b26; --muted:#5d6676; --line:#d5dae3;
+  --stage-a:#a3abb9; --stage-b:#7f8898; --accent:#1d5fc4; --accent-ink:#ffffff; --warn:#a4410c;
+  --display:"Barlow Condensed","PingFang TC","Microsoft JhengHei",sans-serif;
+  --body:-apple-system,"Segoe UI","PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11141a; --panel:#191d26; --ink:#e9ecf2; --muted:#98a1b1; --line:#2c3340;
+    --stage-a:#3a4150; --stage-b:#222732; --accent:#6ea4ff; --accent-ink:#0b1220; --warn:#ffb07a; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11141a; --panel:#191d26; --ink:#e9ecf2; --muted:#98a1b1; --line:#2c3340;
+  --stage-a:#3a4150; --stage-b:#222732; --accent:#6ea4ff; --accent-ink:#0b1220; --warn:#ffb07a; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--body)}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 348px;height:100%}
+.stage{position:relative;min-height:0;background:radial-gradient(ellipse at 50% 35%,var(--stage-a),var(--stage-b))}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;outline-offset:-3px}
+.tag{position:absolute;left:16px;top:14px;display:flex;flex-direction:column;gap:2px;pointer-events:none;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.tag b{font:600 26px/1.1 var(--display);letter-spacing:.02em}
+.tag span{font:12px var(--mono);opacity:.9}
+.stats{position:absolute;left:16px;bottom:14px;display:flex;gap:18px;flex-wrap:wrap;color:#fff;font:12px var(--mono);text-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none;font-variant-numeric:tabular-nums}
+.hint{position:absolute;right:16px;bottom:14px;color:#fff;font-size:12px;opacity:.8;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.err{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:24px;text-align:center;color:#fff}
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:18px 18px 24px;display:flex;flex-direction:column;gap:20px}
+h1{font:600 24px/1.1 var(--display);letter-spacing:.03em;margin:0;text-wrap:balance}
+.lede{margin:4px 0 0;color:var(--muted);font-size:13px}
+h2{font:600 15px/1 var(--display);letter-spacing:.12em;color:var(--muted);margin:0 0 10px;text-transform:uppercase}
+section{display:flex;flex-direction:column}
+.styles{display:grid;gap:6px}
+.style{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.style:hover{border-color:var(--muted)}
+.style[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.sw{display:flex;border-radius:5px;overflow:hidden;width:44px;height:26px;border:1px solid var(--line)}
+.sw i{flex:1}
+.style b{display:block;font-weight:600;font-size:14px}
+.style small{display:block;font:11px var(--mono);color:var(--muted)}
+.row{display:grid;grid-template-columns:86px 1fr 56px;align-items:center;gap:10px;margin-bottom:8px}
+.row label{font-size:13px}
+.row output{font:12px var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font-weight:600;border:0;background:transparent;color:var(--ink);padding:7px 4px;font:inherit;cursor:pointer;border-left:1px solid var(--line)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg small{display:block;font:11px var(--mono);opacity:.8}
+h3{font:600 12px var(--body);color:var(--muted);margin:8px 0 6px}
+h3:first-child{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:5px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);font:13px var(--body);cursor:pointer}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.checks{display:flex;flex-wrap:wrap;gap:8px 16px}
+.checks label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+.checks input{accent-color:var(--accent)}
+.btns{display:grid;gap:8px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{padding:10px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font:600 14px var(--body);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.msg{min-height:1.5em;margin:8px 0 0;font-size:13px;color:var(--muted)}
+.msg.warn{color:var(--warn)}
+.note{margin:10px 0 0;padding:0 0 0 16px;color:var(--muted);font-size:12.5px}
+.note li{margin-bottom:4px}
+.note code{font:11.5px var(--mono);color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:760px){
+  html,body{height:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="view" tabindex="0" aria-label="球具 3D 預覽，可拖曳旋轉"></canvas>
+    <div class="tag"><b id="tagName"></b><span id="tagId"></span></div>
+    <div class="stats"><span id="stTris"></span><span id="stSize"></span></div>
+    <div class="hint">拖曳旋轉 · 滾輪縮放 · 右鍵平移</div>
+    <div class="err" id="err">3D 函式庫載入失敗，請重新整理頁面。</div>
+  </div>
+
+  <aside class="panel">
+    <header>
+      <h1>球具產生器</h1>
+      <p class="lede">台灣常見的球拍、球棒、球桿與球，每種七款塗裝，可匯出到 Blender 與 Unity。</p>
+    </header>
+
+    <section>
+      <h2>球具</h2>
+      <div id="sports"></div>
+    </section>
+
+    <section>
+      <h2>樣式</h2>
+      <div class="styles" id="styles"></div>
+    </section>
+
+    <section id="shapeSec">
+      <h2>外型</h2>
+      <div id="sliders"></div>
+      <div class="row" id="patternRow"><label for="pattern">穿線</label><select id="pattern"></select><span></span></div>
+    </section>
+
+    <section>
+      <h2>模型精細度</h2>
+      <div class="seg" id="detail">
+        <button type="button" data-d="low">低<small id="dLow"></small></button>
+        <button type="button" data-d="mid">中<small id="dMid"></small></button>
+        <button type="button" data-d="high">高<small id="dHigh"></small></button>
+      </div>
+    </section>
+
+    <section>
+      <h2>顯示</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="lineup">並排全部樣式</label>
+        <label><input type="checkbox" id="spin">自動旋轉</label>
+        <label><input type="checkbox" id="wire">線框</label>
+      </div>
+    </section>
+
+    <section>
+      <h2>匯出</h2>
+      <div class="btns">
+        <div class="pair">
+          <button class="btn" id="dlOne" type="button" disabled>目前樣式 GLB</button>
+          <button class="btn" id="dlObj" type="button" disabled>目前樣式 OBJ（ZIP）</button>
+        </div>
+        <button class="btn ghost" id="dlSport" type="button" disabled>下載此球種全部 7 款（ZIP）</button>
+        <button class="btn ghost" id="dlAll" type="button" disabled>下載全部（ZIP）</button>
+      </div>
+      <p class="msg" id="msg" role="status">正在準備下載功能…</p>
+      <ul class="note">
+        <li><code>.glb</code> 已內嵌貼圖；OBJ 版是 <code>.obj + .mtl + .png</code>，打包成 ZIP。批次下載的 ZIP 兩種格式都有。</li>
+        <li>Blender：檔案 → 匯入 → glTF 2.0，選 <code>.glb</code>。</li>
+        <li>Unity：把解壓後的 OBJ 資料夾整個拖進 Assets 即可；要用 <code>.glb</code> 請先安裝 glTFast 套件。</li>
+        <li>單位為公尺。拍、棒、桿的原點在握把底部，Y 軸朝前端；單顆球的原點在球心。</li>
+      </ul>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/exporters/GLTFExporter.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+/*__CORE__*/
+</script>
+<script>
+/*__APP__*/
+</script>
+</body>
+</html>
